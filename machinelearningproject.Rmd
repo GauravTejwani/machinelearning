@@ -1,0 +1,49 @@
+# Application of Machine Learning to predict exercise "classe"
+Author: Gaurav Tejwani
+
+## Question: Can I predict "classe" of exercise from quantitative and qualitative variables
+```{r, echo=TRUE,message=FALSE,results='hide', warning=FALSE}
+#Invoke libraries
+library(lubridate)
+library(Hmisc)
+library(ggplot2)
+library(caret)
+library(dplyr)
+library(reshape2)
+library(gridExtra)
+library(randomForest)
+```
+# Reading data and Pre-processing
+```{r, echo=TRUE}
+# Set working directory and read data
+setwd("C:/Users/gt8616/Desktop/Coursera/Projects/Machine Learning Project")
+input <- read.csv("pml-training.csv")
+```
+#Check data characteristics
+```{r, echo=TRUE,results='hide'}
+summary(input)
+```
+- Most columns contain NA's or missing values. These can not be used for prediction
+- Columns starting with **roll,pitch,yaw,magnet,gyros,accel,classe** show variation and can be used for prediction of classe.
+- We read the data and we partition the data into training and test sets. str funtion reveals that there are 160 variables. This is a big number of variables. So we would have to remove some of the variables whose information is provided by other variables too. Near Zero-Variance Predictors and PCA analysis will help us with that. We can also remove variables such as user_name, raw_timestamp_part_1 etc.  since they do not contain important information.
+- new_window and num_window are categorical variables. They should have factor datatype.
+- All other variables except classe are numerical variables. NA values should be removed and there datatype should be converted to int before doing nearZeroVar and PCA
+#Data Manipulation and Random Forest Model
+```{r,echo=TRUE}
+impvar <- grep("^roll|^pitch|^yaw|^magnet|^gyros|^accel|^classe",names(input),value=TRUE)
+selectcol <- names(input) %in% impvar
+input <- input[,selectcol]
+
+# Create test and training sets and do random forest analysis
+inTrain <- createDataPartition(y=input$classe,p=0.7,list=FALSE)
+training <- input[inTrain,]
+testing <- input[-inTrain,]
+#modfit <- train(classe~.,data=training,method="gbm",verbose=FALSE)
+modfit <- randomForest(classe~.,data=training)
+print(modfit)
+pred <- predict(modfit,testing)
+#table(pred,testing$classe)
+confusionMatrix(pred,testing$classe)
+```
+- Confusion matrix has given the accuraccy and out of sample error (99.46% and 0.54% respectively)
+- randomForest tree methodology appropriately uses with cross-validation by default since it runs multiple tress, predict probabilities, and averages them out across all trees. In this case, total trees=500
